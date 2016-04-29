@@ -61,10 +61,10 @@ def send(array, ser):  # Pass an array, for updating the whole screen, slow!
             sleep(0.03)  # Fastest I can go before artefacts start to appear
 
 def invert(ser): #invert the display
-	ser.write("lcdCmd 0xA7\r")
+    ser.write("lcdCmd 0xA7\r")
 
 def revert(ser): #undo the invert
-	ser.write("lcdCmd 0xA6\r")
+    ser.write("lcdCmd 0xA6\r")
 
 def update_pixel(array, x, y, val, ser):  # Update a single pixel at location x,y, with either 1 or 0
     if (0 <= x <= 132) & (0 <= y <= 32):
