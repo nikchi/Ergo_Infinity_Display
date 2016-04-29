@@ -3,25 +3,32 @@
 # Author: Nick Choi
 
 
-import wmi
 import os
 import psutil
-from time import strftime, time
 import urllib
 import socket
+import platform
 
 from Ergo_Infinity_Display import *
+from time import strftime, time
+
+IS_WINDOWS = False
+
+if 'Windows' in platform.system():
+    import wmi
+    IS_WINDOWS = True
+    w = wmi.WMI(namespace='root\\wmi')
+
 
 lcd = [[0 for x in range(32)] for x in range(128)]
 
-w = wmi.WMI(namespace='root\\wmi')
 hostname = socket.gethostname()
 
 test = "test string to scroll"
 
 if __name__ == '__main__':
 
-    ser = serial.Serial('COM3', 115200, timeout=0.5)  # Change to (Serial port - 1) on Windows.
+    ser = serial.Serial('/dev/ttyACM0', 115200, timeout=0.5)  # Change to (Serial port - 1) on Windows.
     ser.close()
     ser.open()
 

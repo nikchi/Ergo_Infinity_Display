@@ -87,7 +87,8 @@ def send_portion(array, xDims, yDims):  # Update part of the screen, faster for 
 
 
 if __name__ == '__main__':
-    ser = serial.Serial('COM3', 115200, timeout=0.5)  # Change to (Serial port - 1) on Windows.
+    #1:1.4
+    ser = serial.Serial('/dev/ttyACM0', 115200, timeout=0.5)  # Change to (Serial port - 1) on Windows.
     ser.close()
     ser.open()
     for x in range(54, 74):
