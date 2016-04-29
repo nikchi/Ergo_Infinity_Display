@@ -8,7 +8,7 @@ from time import sleep
 from math import floor
 
 # Fonts created for ease of Use
-from Fonts import *
+from fonts.fonts import *
 
 lcd = [[0 for x in range(32)] for x in range(128)]
 

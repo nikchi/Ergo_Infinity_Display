@@ -5,10 +5,13 @@
 
 import os
 import psutil
-from time import strftime, time
 import urllib
 import socket
 import platform
+import serial
+
+from time import strftime, time
+from libs.ergodox_infinity_display import lcd_color, lcd, send_string, send
 
 IS_WINDOWS = False
 
@@ -17,7 +20,6 @@ if 'Windows' in platform.system():
     IS_WINDOWS = True
     w = wmi.WMI(namespace='root\\wmi')
 
-from Ergo_Infinity_Display import *
 lcd = [[0 for x in range(32)] for x in range(128)]
 
 hostname = socket.gethostname()
