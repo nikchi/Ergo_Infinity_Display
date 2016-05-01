@@ -52,7 +52,7 @@ if __name__ == '__main__':
                 temp = (w.MSAcpi_ThermalZoneTemperature()[0].CurrentTemperature/10.0)-273.15 #Temp of CPU (WINDOWS ONLY, Linux needs to use sensors)
             else:
                 # TODO: fix temperature for linux
-                temp = 73
+                temp = None
 
             cpu = psutil.cpu_percent(interval=None) #CPU Usage
             mem = psutil.virtual_memory().percent #Memory Usage
@@ -70,7 +70,8 @@ if __name__ == '__main__':
             dox.lcd.format_string("CPU [", 0, y_t)
             dox.lcd.format_string("]", 76, y_t)
             dox.lcd.format_string("" * int(round(cpu/10)), 26, y_t) # Represent bar graph for CPU usage (total)
-            dox.lcd.format_string("{0:.0f}".format(temp) + "*C", 82, y_t)
+            if temp:
+                dox.lcd.format_string("{0:.0f}".format(temp) + "*C", 82, y_t)
             y_t -=8
             dox.lcd.format_string(strftime("%m-%d"),103,y_t)#Print date and time
             dox.lcd.format_string("MEM [", 0, y_t)
