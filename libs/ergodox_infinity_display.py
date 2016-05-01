@@ -5,119 +5,108 @@
 import serial
 from timeit import timeit
 from time import sleep
-from math import floor
+from math import floor, pow
 
 # Fonts created for ease of Use
 from fonts.fonts import *
 
-lcd = [[0 for x in range(32)] for x in range(128)]
+RED_MASK = 0xFF0000
+GREEN_MASK = 0x00FF00
+BLUE_MASK = 0x0000FF
 
 # LCD is arranged with 0,0 at lower left corner
 # first [] is x direct, second [] is y
+lcd = [[0 for x in range(32)] for x in range(128)]
 
-lcd[0][0] = 1
-lcd[2][0] = 1  # Test pattern to ensure orientation
-lcd[0][2] = 1
+class ErgodoxLCDBuffer(object):
+    def __init__(self):
+        self.data = [[0 for x in range(32)] for x in range(128)]
 
+    def format_char(self, c, x, y):  # Enter a char at location x,y using small 5x8 font
+        for w in range(5):
+            if (0 <= x + w <= 132) & (0 <= y + 8 <= 32):  # Boundrary checking
+                self.data[x + w][y:y + 8] = list(format(QuickType_5x8[(ord(c) - 32) * 5 + w], '08b'))
+
+    def format_string(self, string, x, y):
+        for i, c in enumerate(string):
+            self.format_char(c, x + i * 5, y)
+
+    def clear(self):
+        for x in range(len(self.data)):
+            for y in range(len(self.data[0])):
+                self.data[x][y] = 0
+
+class ErgodoxInterface(object):
+    def __init__(self, serial):
+        self.serial = serial
+        self.lcd = ErgodoxLCDBuffer()
 
 # Fairly painless way to do fonts
-def send_char(array, c, x, y):  # Enter a char at location x,y using small 5x8 font
-    for w in range(5):
-        if (0 <= x + w <= 132) & (0 <= y + 8 <= 32):  # Boundrary checking
-            array[x + w][y:y + 8] = list(format(QuickType_5x8[(ord(c) - 32) * 5 + w], '08b'))
+    def clear(self, array):  # Clean lcd array and clean screen
+        self.lcd.clear()
+        self.serial.write("lcdInit \r")
+        sleep(0.1)
 
+    def lcd_color(self, r, g, b):
+        command = "lcdColor " + str(r) + " " + str(g) + " " + str(b) + " \r"
+        self.serial.write(command)
+        sleep(0.05)
 
-def send_string(array, str, x, y):
-    for i, c in enumerate(str):
-        send_char(array, c, x + i * 5, y)
+    def lcd_hex_color(self, hex_color, bit_width=8):
+        offset = 1
+        if bit_width == 16:
+            offset = 2
 
+        red_mask = pow(RED_MASK, offset)
+        green_mask = pow(GREEN_MASK, offset)
+        blue_mask = pow(BLUE_MASK, offset)
 
-def clear(array, ser):  # Clean lcd array and clean screen
-    for x in range(len(array)):
-        for y in range(len(array[0])):
-            array[x][y] = 0
-    ser.write("lcdInit \r")
-    sleep(0.1)
+        red = (hex_color & int(red_mask)) >> (16 * offset)
+        green = (hex_color & int(green_mask)) >> (8 * offset)
+        blue = (hex_color & int(blue_mask))
 
+        if bit_width == 8:
+            red *= red
+            green *= green
+            blue *= blue
 
-def lcd_color(r, g, b, ser):
-    command = "lcdColor " + str(r) + " " + str(g) + " " + str(b) + " \r"
-    ser.write(command)
-    sleep(0.05)
+        self.lcd_color(red*red, green*green, blue*blue)
 
+    def send(self):  # Pass an array, for updating the whole screen, slow!
+        for segs in range(8):  # have to break into 8 segments of 16 to avoid lcd overload
+            for y in range(len(self.lcd.data[0]) / 8):
+                command = "lcdDisp " + hex(y) + " " + hex(segs * 16) + " "
+                for x in range(len(self.lcd.data) / 8):
+                    val = ""
+                    for w in range(7, -1, -1):
+                        val += str(self.lcd.data[x + segs * 16][y * 8 + w])
+                    command += hex(int(val, 2)) + " "
+                command += "\r"
+                self.serial.write(command)
+                # print command
+                sleep(0.03)  # Fastest I can go before artefacts start to appear
 
-def send(array, ser):  # Pass an array, for updating the whole screen, slow!
-    for segs in range(8):  # have to break into 8 segments of 16 to avoid lcd overload
-        for y in range(len(array[0]) / 8):
-            command = "lcdDisp " + hex(y) + " " + hex(segs * 16) + " "
-            for x in range(len(array) / 8):
-                val = ""
-                for w in range(7, -1, -1):
-                    val += str(array[x + segs * 16][y * 8 + w])
-                command += hex(int(val, 2)) + " "
-            command += "\r"
-            ser.write(command)
+    def invert(self): #invert the display
+        self.serial.write("lcdCmd 0xA7\r")
+
+    def revert(self): #undo the invert
+        self.serial.write("lcdCmd 0xA6\r")
+
+    def update_pixel(self, x, y, val):  # Update a single pixel at location x,y, with either 1 or 0
+        if (0 <= x <= 132) & (0 <= y <= 32):
+            self.lcd.data[x][y] = val;
+            ypose = int(floor(y / 8))
+            val = ""
+            for w in range(7, -1, -1):
+                val += str(self.lcd.data[x][ypose * 8 + w])
+            command = "lcdDisp " + hex(ypose) + " " + hex(x) + " " + hex(int(val, 2)) + " \r"
+            self.serial.write(command)
             # print command
-            sleep(0.03)  # Fastest I can go before artefacts start to appear
-
-def invert(ser): #invert the display
-    ser.write("lcdCmd 0xA7\r")
-
-def revert(ser): #undo the invert
-    ser.write("lcdCmd 0xA6\r")
-
-def update_pixel(array, x, y, val, ser):  # Update a single pixel at location x,y, with either 1 or 0
-    if (0 <= x <= 132) & (0 <= y <= 32):
-        array[x][y] = val;
-        ypose = int(floor(y / 8))
-        val = ""
-        for w in range(7, -1, -1):
-            val += str(array[x][ypose * 8 + w])
-        command = "lcdDisp " + hex(ypose) + " " + hex(x) + " " + hex(int(val, 2)) + " \r"
-        ser.write(command)
-        # print command
-        sleep(0.03)
-
+            sleep(0.03)
 
 # NOTE: This will update to the upper limit of the Y page stored, as this is actually faster than limiting it to a smaller section
-def send_portion(array, xDims, yDims):  # Update part of the screen, faster for small updates (~30 pixels total)
-    for y in range(yDims[0], yDims[1], 2):
-        for x in range(xDims[0], xDims[1]):
-            if (0 <= x <= 132) & (0 <= y <= 32): update_pixel(array, x, y, array[x][y], ser)
+    def send_portion(self, xDims, yDims):  # Update part of the screen, faster for small updates (~30 pixels total)
+        for y in range(yDims[0], yDims[1], 2):
+            for x in range(xDims[0], xDims[1]):
+                if (0 <= x <= 132) & (0 <= y <= 32): self.update_pixel(x, y, self.lcd.data[x][y])
 
-
-if __name__ == '__main__':
-    #1:1.4
-    ser = serial.Serial('/dev/ttyACM0', 115200, timeout=0.5)  # Change to (Serial port - 1) on Windows.
-    ser.close()
-    ser.open()
-    for x in range(54, 74):
-        for y in range(6, 26):
-            lcd[x][y] = 1
-
-    send_char(lcd, '!', 4, 0)
-
-    send_string(lcd, "TEST 1,2,3 ", 4, 10)
-    send_string(lcd, "", 4, 0)
-
-    # This chunk shows time it takes for different operations
-    print "\n\rTiming Tests"
-
-    send(lcd, ser)
-    # print "Update Full LCD: " + str(timeit("send(lcd,ser)",setup="from __main__ import send,lcd",number=1)) # Send 3 dot test pattern
-    # print "Clear LCD: " + str(timeit("clear(lcd,ser)",setup="from __main__ import clear,lcd",number=1)) # Clear LCD array, and clear screen
-    # print "Update 1 individual pixel: " + str(timeit("update_pixel(lcd,1,1,1,ser)",setup="from __main__ import update_pixel,lcd",number=1)) # Send individual pixels, while keeping exisiting data from array
-
-    # Fill LCD array with block of  checkerboard data
-    v = 1
-    for x in range(8, 20):
-        v ^= 1
-        for y in range(10, 30):
-            lcd[x][y] = v
-            v ^= 1
-
-    print "Update block of LCD: " + str(
-        timeit("send_portion(lcd,[10,15],[20,25])", setup="from __main__ import send_portion,lcd",
-               number=1))  # Upload smaller portion of data to test speed
-
-    ser.close()
