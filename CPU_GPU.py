@@ -14,23 +14,27 @@ from time import strftime, time
 from libs.ergodox_infinity_display import lcd_color, lcd, send_string, send
 
 IS_WINDOWS = False
-
+IS_MAC = False
 if 'Windows' in platform.system():
     import wmi
     IS_WINDOWS = True
     w = wmi.WMI(namespace='root\\wmi')
+elif 'Darwin' in platform.system():
+    IS_MAC = True
 
 lcd = [[0 for x in range(32)] for x in range(128)]
 
 hostname = socket.gethostname()
 
-
-if __name__ == '__main__':        
+if __name__ == '__main__':
     # dev/serial/by-id/usb-Kiibohd_Keyboard_-_MDErgo1_PartialMap_pjrcUSB_full_Clean_master_-_2016-02-11_22:56:25_-0800-if02
-    ser = serial.Serial('/dev/ttyACM0', 115200, timeout=0.5) #Change to (Serial port - 1) on Windows.
-    ser.close()
-    ser.open()
-
+    if not IS_MAC:
+        ser = serial.Serial('/dev/ttyACM0', 115200, timeout=0.5) #Change to (Serial port - 1) on Windows.
+        ser.close()
+        ser.open()
+    else:
+        from libs.MacSerial import MacSerial
+        ser = MacSerial()
 
     # Keeping track of Incoming + outgoing net traffic
     l_net = psutil.net_io_counters().bytes_recv + psutil.net_io_counters().bytes_sent
