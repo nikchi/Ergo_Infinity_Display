@@ -8,27 +8,25 @@ import psutil
 import urllib
 import socket
 import platform
-import serial
 
 from time import strftime, time
 from libs.ergodox_infinity_display import ErgodoxInterface
 
-IS_WINDOWS = False
-IS_MAC = False
-
-if 'Windows' in platform.system():
-    import wmi
-    IS_WINDOWS = True
-    w = wmi.WMI(namespace='root\\wmi')
-elif 'Darwin' in platform.system():
-    IS_MAC = True
-
-
-hostname = socket.gethostname()
-
 if __name__ == '__main__':
-    # dev/serial/by-id/usb-Kiibohd_Keyboard_-_MDErgo1_PartialMap_pjrcUSB_full_Clean_master_-_2016-02-11_22:56:25_-0800-if02
+    IS_WINDOWS = False
+    IS_MAC = False
+
+    if 'Windows' in platform.system():
+        import wmi
+        IS_WINDOWS = True
+        w = wmi.WMI(namespace='root\\wmi')
+    elif 'Darwin' in platform.system():
+        IS_MAC = True
+
     if not IS_MAC:
+        import serial
+        # TODO: Dynamically discover the serial device
+        # dev/serial/by-id/usb-Kiibohd_Keyboard_-_MDErgo1_PartialMap_pjrcUSB_full_Clean_master_-_2016-02-11_22:56:25_-0800-if02
         ser = serial.Serial('/dev/ttyACM0', 115200, timeout=0.5) #Change to (Serial port - 1) on Windows.
         ser.close()
         ser.open()
@@ -46,15 +44,16 @@ if __name__ == '__main__':
     ip = urllib.urlopen('http://whatismyip.org').read() #External IP, This may need to be fixed as website changes
     p = ip.find("font-weight: 600;")
     ip = ip[p+19:p+34].strip('</span')
+    hostname = socket.gethostname()
 
     try:
-        color = 0
         while True:
             if IS_WINDOWS:
                 temp = (w.MSAcpi_ThermalZoneTemperature()[0].CurrentTemperature/10.0)-273.15 #Temp of CPU (WINDOWS ONLY, Linux needs to use sensors)
             else:
                 # TODO: fix temperature for linux
                 temp = 73
+
             cpu = psutil.cpu_percent(interval=None) #CPU Usage
             mem = psutil.virtual_memory().percent #Memory Usage
             disk =  psutil.disk_usage('/').percent
@@ -85,7 +84,6 @@ if __name__ == '__main__':
             y_t -=8
             dox.lcd.format_string("NET ", 0, y_t)
             dox.lcd.format_string("{0:.1f}".format(net/1048576) + "M", 24, y_t)
-            ip = socket.gethostbyname(hostname) # Use Local IP instead of global one source above, not reliable
             dox.lcd.format_string(ip.rjust(15), 53, y_t)
 
             dox.send() #Update LCD all at once
