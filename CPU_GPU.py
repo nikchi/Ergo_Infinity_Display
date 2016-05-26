@@ -61,7 +61,7 @@ if __name__ == '__main__':
             l_time = time()
             l_net = psutil.net_io_counters().bytes_recv + psutil.net_io_counters().bytes_sent
 
-            dox.lcd_hex_color(0x0F0F0F)
+            dox.lcd_hex_color(0x00000C)
 
             dox.lcd.clear()
 
