@@ -42,14 +42,14 @@ class ErgodoxInterface(object):
         self.lcd = ErgodoxLCDBuffer()
 
 # Fairly painless way to do fonts
-    def clear(self, array):  # Clean lcd array and clean screen
+    def clear(self):  # Clean lcd array and clean screen
         self.lcd.clear()
-        self.serial.write("lcdInit \r")
+        self.serial.write("lcdInit \r".encode('ascii'))
         sleep(0.1)
 
     def lcd_color(self, r, g, b):
         command = "lcdColor " + str(r) + " " + str(g) + " " + str(b) + " \r"
-        self.serial.write(command)
+        self.serial.write(command.encode('ascii'))
         sleep(0.05)
 
     def lcd_hex_color(self, hex_color, bit_width=8):
@@ -74,23 +74,23 @@ class ErgodoxInterface(object):
 
     def send(self):  # Pass an array, for updating the whole screen, slow!
         for segs in range(8):  # have to break into 8 segments of 16 to avoid lcd overload
-            for y in range(len(self.lcd.data[0]) / 8):
+            for y in range(int(len(self.lcd.data[0]) / 8)):
                 command = "lcdDisp " + hex(y) + " " + hex(segs * 16) + " "
-                for x in range(len(self.lcd.data) / 8):
+                for x in range(int(len(self.lcd.data) / 8)):
                     val = ""
                     for w in range(7, -1, -1):
                         val += str(self.lcd.data[x + segs * 16][y * 8 + w])
                     command += hex(int(val, 2)) + " "
                 command += "\r"
-                self.serial.write(command)
+                self.serial.write(command.encode('ascii'))
                 # print command
                 sleep(0.03)  # Fastest I can go before artefacts start to appear
 
     def invert(self): #invert the display
-        self.serial.write("lcdCmd 0xA7\r")
+        self.serial.write("lcdCmd 0xA7\r".encode('ascii'))
 
     def revert(self): #undo the invert
-        self.serial.write("lcdCmd 0xA6\r")
+        self.serial.write("lcdCmd 0xA6\r".encode('ascii'))
 
     def update_pixel(self, x, y, val):  # Update a single pixel at location x,y, with either 1 or 0
         if (0 <= x <= 132) & (0 <= y <= 32):
@@ -100,7 +100,7 @@ class ErgodoxInterface(object):
             for w in range(7, -1, -1):
                 val += str(self.lcd.data[x][ypose * 8 + w])
             command = "lcdDisp " + hex(ypose) + " " + hex(x) + " " + hex(int(val, 2)) + " \r"
-            self.serial.write(command)
+            self.serial.write(command.encode('ascii'))
             # print command
             sleep(0.03)
 
