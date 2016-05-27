@@ -87,13 +87,18 @@ def process_event(event, self_id):
         if event.HasField('conversation'):
             # When we recieve a message
             if event.event_notification.event.sender_id.chat_id != self_id:
-                print("Message with {}() with message id {}".format(event.conversation.participant_data[0].fallback_name,
+                sender = "Unknown"
+                for part in event.conversation.participant_data:
+                    if part.id.chat_id != self_id:
+                        sender = part.fallback_name
+                        break
+                print("Message with {}() with message id {}".format(sender,
                     event.event_notification.event.sender_id.chat_id,
                      event.conversation.conversation_id.id))
                 print("Content: {}".format(event.event_notification.event.chat_message.message_content.segment[0].text))
                 # Clear the screen and write the sender name to the top left
                 dox.clear()
-                dox.lcd.format_string(event.conversation.participant_data[0].fallback_name, 0, 24)
+                dox.lcd.format_string(sender, 0, 24)
                 # Color foosball messages a different color
                 if 'foos' in event.event_notification.event.chat_message.message_content.segment[0].text:
                     dox.lcd.format_string('FOOSBALL REQUEST!!!', 0, 16)
